@@ -10,12 +10,33 @@ importScripts('vendor/kv-keeper.js-1.0.4/kv-keeper.js');
 
 
 self.addEventListener('install', event => {
-    const promise = preCacheAllFavorites()
-        // Вопрос №1: зачем нужен этот вызов?
-        .then(() => self.skipWaiting())
-        .then(() => console.log('[ServiceWorker] Installed!'));
+    const promiseFaves = preCacheAllFavorites();
+    const promiseInit = caches
+        .open(CACHE_VERSION)
+        .then(cache => {
+            return cache.addAll([
+                '/entrance-task-3/gifs.html',
+                '/entrance-task-3/assets/star.svg',
+                '/entrance-task-3/assets/blocks.js',
+                '/entrance-task-3/assets/templates.js',
+                '/entrance-task-3/assets/style.css',
+                '/entrance-task-3/vendor/bem-components-dist-5.0.0/touch-phone/bem-components.dev.css',
+                '/entrance-task-3/vendor/bem-components-dist-5.0.0/touch-phone/bem-components.dev.js',
+                '/entrance-task-3/vendor/kv-keeper.js-1.0.4/kv-keeper.js',
+                '/entrance-task-3/vendor/kv-keeper.js-1.0.4/kv-keeper.typedef.js',
+            ])
+        });
 
-    event.waitUntil(promise);
+    event.waitUntil(
+        Promise
+            .all([
+                promiseInit,
+                promiseFaves
+            ])
+            // Вопрос №1: зачем нужен этот вызов?
+            .then(() => self.skipWaiting())
+            .then(() => console.log('[ServiceWorker] Installed!'))
+    );
 });
 
 self.addEventListener('activate', event => {
