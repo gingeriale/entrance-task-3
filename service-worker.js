@@ -34,6 +34,10 @@ self.addEventListener('install', event => {
                 promiseFaves
             ])
             // Вопрос №1: зачем нужен этот вызов?
+            /**
+             * Для пропуска сервис-воркером ожидания закрытия страниц, использующих другие сервис-воркеры - для
+             * пропуска стадии INSTALLED жизненного цикла и перехода к стадии ACTIVATING.
+             */
             .then(() => self.skipWaiting())
             .then(() => console.log('[ServiceWorker] Installed!'))
     );
@@ -43,6 +47,11 @@ self.addEventListener('activate', event => {
     const promise = deleteObsoleteCaches()
         .then(() => {
             // Вопрос №2: зачем нужен этот вызов?
+            /**
+             * Активирует сервис-воркер без перезагрузки страницы.
+             * Используется в паре с вызовом из вопроса №1 для немедленной активации изменений сервис-воркера
+             * на всех страницах, которые его используют.
+             */
             self.clients.claim();
 
             console.log('[ServiceWorker] Activated!');
@@ -55,6 +64,9 @@ self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
 
     // Вопрос №3: для всех ли случаев подойдёт такое построение ключа?
+    /**
+     * Не уверена, что вопрос в этом, но, вероятно, для случая с GET-параметрами не подойдет
+     */
     const cacheKey = url.origin + url.pathname;
 
     let response;
@@ -133,6 +145,10 @@ function deleteObsoleteCaches() {
     return caches.keys()
         .then(names => {
             // Вопрос №4: зачем нужна эта цепочка вызовов?
+            /**
+             * Ответ: для удаления данных, закешированных предыдущими версиями сервис-воркера.
+             * Понадобится, если произошло обновление версии.
+             */
             return Promise.all(
                 names.filter(name => name !== CACHE_VERSION)
                     .map(name => {
@@ -148,7 +164,7 @@ function needStoreForOffline(cacheKey) {
     return cacheKey.includes('vendor/') ||
         cacheKey.includes('assets/') ||
         cacheKey.endsWith('jquery.min.js') ||
-        cacheKey.endsWith('gifs.html');
+        cacheKey.includes('gifs.html');
 }
 
 // Скачать и добавить в кеш
@@ -158,6 +174,10 @@ function fetchAndPutToCache(cacheKey, request) {
             return caches.open(CACHE_VERSION)
                 .then(cache => {
                     // Вопрос №5: для чего нужно клонирование?
+                    /**
+                     * Ответ от сервера может быть прочитан только однократно, поэтому, чтобы и вернуть ответ
+                     * и сохранить его в кеше, необходимо склонировать ответ.
+                     */
                     cache.put(cacheKey, response.clone());
                 })
                 .then(() => response);
